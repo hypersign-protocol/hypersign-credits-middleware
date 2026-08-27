@@ -1,0 +1,74 @@
+{
+  "name": "@hypersign-protocol/credit-middleware",
+  "version": "5.0.0",
+  "description": "Catalog-driven NestJS credit lifecycle SDK with Redis and BullMQ",
+  "license": "ISC",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "nestjs",
+    "credits",
+    "metering",
+    "rate-limiting",
+    "redis",
+    "reservation",
+    "interceptor",
+    "billing",
+    "bullmq",
+    "catalog"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "scripts": {
+    "build": "npm run build:all",
+    "build:all": "npm run build:example && npm run build:ssi && npm run build:kyc",
+    "build:example": "node scripts/build-profile.js example",
+    "build:ssi": "node scripts/build-profile.js ssi",
+    "build:kyc": "node scripts/build-profile.js kyc",
+    "build:example:apps": "tsc -p example/tsconfig.json",
+    "start:example:events": "npm run build:example:apps && node dist-example/example/event-server/main.js",
+    "test": "jest --runInBand",
+    "test:redis": "tsc -p tsconfig.json --outDir dist && node scripts/verify-redis.js",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@nestjs/common": ">=9 <12",
+    "@nestjs/core": ">=9 <12",
+    "rxjs": ">=7 <8"
+  },
+  "dependencies": {
+    "bullmq": "5.81.3",
+    "ioredis": "^5.7.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/schedule": "6.1.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "26.2.0",
+    "jest": "^30.0.5",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/test"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "serviceType": "EXAMPLE_API",
+  "version": "1.0.0",
+  "globalPrefix": "",
+  "versioning": "NONE",
+  "routes": [
+    { "method": "GET", "path": "/demo/free", "charges": [] },
+    { "method": "GET", "path": "/demo/balance", "charges": [] },
+    { "method": "GET", "path": "/demo/reservations/:reservationId", "charges": [] },
+    { "method": "POST", "path": "/demo/orphan", "charges": [] },
+    { "method": "POST", "path": "/demo/deferred", "charges": [] },
+    {
+      "method": "POST",
+      "path": "/demo/blockchain-operation",
+      "charges": [
+        { "id": "api", "creditType": "API_CREDIT", "amount": 5 },
+        {
+          "id": "blockchain-transaction",
+          "creditType": "BLOCKCHAIN_TXN_CREDIT",
+          "amount": 25,
+          "settlementMode": "DEFERRED",
+          "autoRecover": false
+        }
+      ]
+    },
+    { "method": "POST", "path": "/demo/deferred/:reservationId/commit", "charges": [] },
+    { "method": "POST", "path": "/demo/deferred/:reservationId/rollback", "charges": [] },
+    { "method": "GET", "path": "/demo/provider-calls", "charges": [] },
+    { "method": "POST", "path": "/demo/recover", "charges": [] },
+    {
+      "method": "POST",
+      "path": "/demo/cheap",
+      "boundary": true,
+      "charges": [{ "id": "api", "creditType": "API_CREDIT", "amount": 10 }]
+    },
+    {
+      "method": "POST",
+      "path": "/demo/expensive",
+      "charges": [{ "id": "api", "creditType": "API_CREDIT", "amount": 70 }]
+    },
+    {
+      "method": "POST",
+      "path": "/demo/fail",
+      "charges": [{ "id": "api", "creditType": "API_CREDIT", "amount": 20 }]
+    }
+  ]
+}
