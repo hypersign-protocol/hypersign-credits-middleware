@@ -4,7 +4,7 @@ Configuration, protocol, storage, and operations reference for
 `@hypersign-protocol/credit-middleware`.
 
 > SDK version: `5.0.0`
-> Bundled catalog: `CAVACH_API@3.20.0`
+> Bundled catalog: `CAVACH_API@3.21.1`
 > Supported runtime: Node.js 18+, NestJS 9–11, Redis 6.2+
 
 ## Contents
@@ -132,7 +132,7 @@ catalog through `CreditModule` configuration.
 The bundled catalog uses:
 
 - service type `CAVACH_API`;
-- catalog version `3.20.0`;
+- catalog version `3.21.1`;
 - global prefix `api`;
 - URI versioning with prefix `v`; and
 - default controller version `1`.

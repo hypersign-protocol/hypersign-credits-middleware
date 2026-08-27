@@ -5,7 +5,7 @@ of `@hypersign-protocol/credit-middleware` version 5.0.0. It follows commands,
 HTTP reservations, Redis state, outbox events, BullMQ jobs, settlement, and
 recovery down to their key relationships and atomicity boundaries.
 
-The examples use the bundled catalog `CAVACH_API@3.20.0` and default queue names.
+The examples use the bundled catalog `CAVACH_API@3.21.1` and default queue names.
 
 ## Contents
 
@@ -654,7 +654,7 @@ All relayed Stream events use:
 interface CreditLifecycleEventEnvelope {
   eventId: string;          // Redis Stream ID, durable consumer idempotency key
   schemaVersion: 3;
-  catalogVersion: string;   // 3.20.0 in this release
+  catalogVersion: string;   // 3.21.1 in this release
   serviceType: string;        // CAVACH_API
   event: Record<string, unknown>;
 }

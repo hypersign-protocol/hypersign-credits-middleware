@@ -78,7 +78,7 @@ describe('repository event-server example', () => {
       data: {
         schemaVersion: 3,
         serviceType: CreditServiceType.CAVACH_API,
-        catalogVersion: '3.20.0',
+        catalogVersion: '3.21.1',
         eventId: '1-0',
         event: { type: CreditEventType.CREDIT_GRANTED, appId: 'app:123' },
       },

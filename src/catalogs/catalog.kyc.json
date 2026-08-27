@@ -1,6 +1,6 @@
 {
   "serviceType": "CAVACH_API",
-  "version": "3.20.0",
+  "version": "3.21.1",
   "globalPrefix": "api",
   "versioning": "URI",
   "uriVersionPrefix": "v",
@@ -360,6 +360,17 @@
       "method": "GET",
       "path": "/api/v1/e-kyc/verification/session/:sessionId",
       "charges": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/e-kyc/verification/sessions/:sessionId/decision",
+      "charges": [
+        {
+          "id": "api",
+          "creditType": "API_CREDIT",
+          "amount": 4
+        }
+      ]
     },
     {
       "method": "GET",

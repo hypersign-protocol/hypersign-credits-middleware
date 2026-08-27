@@ -389,7 +389,7 @@ Use the API application's existing start command if it differs.
 Successful startup includes a log in this form:
 
 ```text
-[CreditCatalogAuditor] Validated <route-count> route(s) against credit catalog CAVACH_API@3.20.0
+[CreditCatalogAuditor] Validated <route-count> route(s) against credit catalog CAVACH_API@3.21.1
 ```
 
 Do not continue until the API server remains running and this audit succeeds.
