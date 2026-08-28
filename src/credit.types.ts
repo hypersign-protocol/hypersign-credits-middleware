@@ -127,6 +127,21 @@ export interface CreditRequestContext {
   environment: CreditEnvironment;
 }
 
+export type CreditCatalogConditionOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'exists';
+
+export interface CreditCatalogChargeCondition {
+  /** Request input inspected by the condition. Only parsed request bodies are supported. */
+  source: 'body';
+  /** Dot-separated own-property path, for example "registerCredentialStatus". */
+  path: string;
+  operator: CreditCatalogConditionOperator;
+  /** Required by equals/notEquals and omitted for exists. */
+  value?: string | number | boolean | null;
+}
+
 export interface CreditCatalogCharge {
   /** Unique within one route; also scopes request idempotency. */
   id: string;
@@ -134,6 +149,8 @@ export interface CreditCatalogCharge {
   amount: number;
   settlementMode?: CreditSettlementMode;
   autoRecover?: boolean;
+  /** Applies this charge only when the request input satisfies the condition. */
+  when?: CreditCatalogChargeCondition;
 }
 
 export interface CreditCatalogRoute {

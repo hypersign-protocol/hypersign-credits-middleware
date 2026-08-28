@@ -29,6 +29,8 @@ the bundled catalog.
 
 - Each SDK artifact bundles exactly one route and price catalog. Controllers do
   not declare prices.
+- A catalog charge may include an optional request-body `when` condition.
+  Charges without one remain unconditional.
 - Startup fails when the NestJS route table and bundled catalog differ.
 - The host provides one `CREDIT_REDIS_CLIENT`. The SDK creates and closes its
   own Redis Stream and BullMQ connections.
@@ -162,6 +164,7 @@ Grant retries are idempotent when every immutable field matches. Reusing a
 
 ```text
 catalog match
+  -> retain only charges whose optional request-body condition matches
   -> resolve trusted subject and environment
   -> prod: reserve plan allocations
   -> dev: emit CREDIT_OBSERVED with deductedAmount=0

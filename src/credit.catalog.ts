@@ -7,6 +7,7 @@ import {
 import {
   CreditCatalog,
   CreditCatalogCharge,
+  CreditCatalogChargeCondition,
   CreditCatalogRoute,
   CREDIT_OPTIONS,
   ResolvedCreditOptions,
@@ -84,6 +85,19 @@ export class CreditCatalogService {
     return this.exactRoutes.get(this.key(method, normalizePath(routePath)));
   }
 
+  /** Returns the immutable subset of route charges applicable to this request. */
+  forRequest(
+    route: ResolvedCreditCatalogRoute,
+    request: unknown,
+  ): ResolvedCreditCatalogRoute {
+    const charges = route.charges.filter((charge) =>
+      !charge.when || matchesCondition(charge.when, request),
+    );
+    return charges.length === route.charges.length
+      ? route
+      : { ...route, charges };
+  }
+
   private resolveRoute(route: CreditCatalogRoute, index: number): ResolvedCreditCatalogRoute {
     const method = required(route.method, `catalog.routes[${index}].method`).toUpperCase();
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'ALL']
@@ -108,7 +122,10 @@ export class CreditCatalogService {
       if (!autoRecover && settlementMode !== CreditSettlementMode.DEFERRED) {
         throw new TypeError(`${field}.autoRecover=false requires DEFERRED settlement`);
       }
-      return { ...charge, id, creditType, settlementMode, autoRecover };
+      const when = charge.when === undefined
+        ? undefined
+        : resolveCondition(charge.when, `${field}.when`);
+      return { ...charge, id, creditType, settlementMode, autoRecover, when };
     });
     return { ...route, method, path, operation, boundary: route.boundary ?? false, charges };
   }
@@ -116,6 +133,76 @@ export class CreditCatalogService {
   private key(method: string, path: string): string {
     return `${method.toUpperCase()} ${path}`;
   }
+}
+
+function resolveCondition(
+  condition: CreditCatalogChargeCondition,
+  field: string,
+): CreditCatalogChargeCondition {
+  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
+    throw new TypeError(`${field} must be an object`);
+  }
+  if (condition.source !== 'body') {
+    throw new TypeError(`${field}.source must be body`);
+  }
+  const path = required(condition.path, `${field}.path`);
+  const segments = path.split('.');
+  if (!segments.every(isSafePathSegment)) {
+    throw new TypeError(`${field}.path must be a safe dot-separated property path`);
+  }
+  if (!['equals', 'notEquals', 'exists'].includes(condition.operator)) {
+    throw new TypeError(`${field}.operator must be equals, notEquals, or exists`);
+  }
+  if (condition.operator === 'exists') {
+    if (Object.prototype.hasOwnProperty.call(condition, 'value')) {
+      throw new TypeError(`${field}.value must be omitted for exists`);
+    }
+  } else if (!Object.prototype.hasOwnProperty.call(condition, 'value') ||
+      !isConditionValue(condition.value)) {
+    throw new TypeError(
+      `${field}.value must be a string, number, boolean, or null for ${condition.operator}`,
+    );
+  }
+  return { ...condition, path };
+}
+
+function matchesCondition(
+  condition: CreditCatalogChargeCondition,
+  request: unknown,
+): boolean {
+  const body = isRecord(request) ? request.body : undefined;
+  const result = readOwnPath(body, condition.path);
+  if (condition.operator === 'exists') return result.exists;
+  if (condition.operator === 'equals') return result.exists && Object.is(result.value, condition.value);
+  return !result.exists || !Object.is(result.value, condition.value);
+}
+
+function readOwnPath(
+  input: unknown,
+  path: string,
+): { exists: boolean; value?: unknown } {
+  let value = input;
+  for (const segment of path.split('.')) {
+    if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, segment)) {
+      return { exists: false };
+    }
+    value = value[segment];
+  }
+  return { exists: true, value };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSafePathSegment(segment: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(segment) &&
+    segment !== '__proto__' && segment !== 'prototype' && segment !== 'constructor';
+}
+
+function isConditionValue(value: unknown): value is string | number | boolean | null {
+  return value === null || typeof value === 'string' || typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value));
 }
 
 export function defineCreditCatalog<T extends CreditCatalog>(catalog: T): T {

@@ -40,6 +40,29 @@ const options = {
           },
         ],
       },
+      {
+        method: 'POST', path: '/api/conditional',
+        charges: [{
+          id: 'txn', creditType: 'BLOCKCHAIN_CREDIT', amount: 25,
+          when: {
+            source: 'body' as const, path: 'onChain',
+            operator: 'equals' as const, value: true,
+          },
+        }],
+      },
+      {
+        method: 'POST', path: '/api/conditional-boundary', boundary: true,
+        charges: [
+          { id: 'api', creditType: 'API_CREDIT', amount: 20 },
+          {
+            id: 'txn', creditType: 'BLOCKCHAIN_CREDIT', amount: 25,
+            when: {
+              source: 'body' as const, path: 'onChain',
+              operator: 'equals' as const, value: true,
+            },
+          },
+        ],
+      },
       { method: 'GET', path: '/api/free', charges: [] },
     ],
   },
@@ -152,6 +175,16 @@ describe('catalog-driven CreditInterceptor', () => {
     expect(executor.apply).not.toHaveBeenCalled();
   });
 
+  it('runs a request with no matching conditional charges without resolving context', async () => {
+    await expect(lastValueFrom(interceptor.intercept(
+      httpContext({
+        method: 'POST', originalUrl: '/api/conditional', body: { onChain: false },
+      }),
+      { handle: () => of('not-on-chain') } as CallHandler,
+    ))).resolves.toBe('not-on-chain');
+    expect(executor.apply).not.toHaveBeenCalled();
+  });
+
   it('rejects a runtime route that is absent from the catalog', () => {
     expect(() => interceptor.intercept(
       httpContext({ method: 'POST', originalUrl: '/api/unknown' }),
@@ -221,6 +254,37 @@ describe('catalog-driven CreditInterceptor', () => {
     expect(executor.claim).toHaveBeenCalled();
     expect(boundary.claimedByInterceptor).toBe(true);
     expect(boundary.finalized).toBe(true);
+  });
+
+  it('claims the charge set resolved by the boundary without re-evaluating it', async () => {
+    const catalogRoute = catalog.find('POST', '/api/conditional-boundary')!;
+    const route = catalog.forRequest(catalogRoute, { body: { onChain: false } });
+    const applied = [reservation('res_boundary')];
+    const boundary = {
+      route,
+      actions: applied,
+      claimedByInterceptor: false,
+      finalized: false,
+    };
+    executor.claim.mockResolvedValue(applied);
+    const request = {
+      method: 'POST', originalUrl: '/api/conditional-boundary',
+      body: { onChain: true },
+      [CREDIT_BOUNDARY_STATE]: boundary,
+    };
+
+    await lastValueFrom(interceptor.intercept(
+      httpContext(request),
+      { handle: () => of('ok') } as CallHandler,
+    ));
+
+    expect(executor.claim).toHaveBeenCalledWith(
+      expect.objectContaining({
+        charges: [expect.objectContaining({ id: 'api' })],
+      }),
+      expect.anything(),
+      applied,
+    );
   });
 
   it('executes a dev request after observation without committing credit', async () => {

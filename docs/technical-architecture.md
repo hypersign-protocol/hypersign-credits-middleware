@@ -408,7 +408,8 @@ grant.
 flowchart TD
     Request[HTTP request] --> Match{Catalog route found?}
     Match -- No --> Mismatch[500 catalog mismatch]
-    Match -- Yes --> Free{charges empty?}
+    Match -- Yes --> Conditions[Filter charges by optional body conditions]
+    Conditions --> Free{applicable charges empty?}
     Free -- Yes --> Controller[Execute controller]
     Free -- No --> Context[Resolve trusted subject + requestId + environment]
     Context --> Identity{appId and prod/dev valid?}

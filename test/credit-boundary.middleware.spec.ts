@@ -18,7 +18,16 @@ describe('catalog-driven CreditBoundaryMiddleware', () => {
       serviceType: 'test', version: '1', routes: [
         {
           method: 'POST', path: '/paid/:id', boundary: true,
-          charges: [{ id: 'api', creditType: 'API_CREDIT', amount: 10 }],
+          charges: [
+            { id: 'api', creditType: 'API_CREDIT', amount: 10 },
+            {
+              id: 'txn', creditType: 'BLOCKCHAIN_TXN_CREDIT', amount: 2_000,
+              when: {
+                source: 'body' as const, path: 'onChain',
+                operator: 'equals' as const, value: true,
+              },
+            },
+          ],
         },
         { method: 'GET', path: '/free', charges: [] },
       ],
@@ -83,5 +92,20 @@ describe('catalog-driven CreditBoundaryMiddleware', () => {
     );
     expect(next).toHaveBeenCalled();
     expect(executor.apply).not.toHaveBeenCalled();
+  });
+
+  it('passes only matching charges into the early boundary reservation', async () => {
+    const request: any = {
+      method: 'POST', originalUrl: '/paid/123', body: { onChain: false },
+    };
+    await middleware.use(request, new EventEmitter() as any, jest.fn());
+
+    expect(executor.apply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        charges: [expect.objectContaining({ id: 'api' })],
+      }),
+      expect.anything(),
+    );
+    expect(request[CREDIT_BOUNDARY_STATE].route.charges).toHaveLength(1);
   });
 });

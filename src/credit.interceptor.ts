@@ -73,14 +73,15 @@ export class CreditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<CreditRequest>();
     const method = request.method ?? '';
     const path = request.originalUrl ?? request.url ?? '';
-    const route = this.catalog.find(method, path);
-    if (!route) {
+    const catalogRoute = this.catalog.find(method, path);
+    if (!catalogRoute) {
       throw new CreditCatalogMismatchException(`${method} ${path} is not cataloged`);
     }
+    const boundary = request[CREDIT_BOUNDARY_STATE];
+    const route = boundary?.route ?? this.catalog.forRequest(catalogRoute, request);
     if (route.charges.length === 0) return next.handle();
 
     const requestContext = this.options.requestContextResolver(request);
-    const boundary = request[CREDIT_BOUNDARY_STATE];
     const actionPromise = boundary
       ? this.claimBoundary(route, requestContext, boundary)
       : this.executor.apply(route, requestContext);

@@ -683,7 +683,44 @@ closed with HTTP `402 Payment Required`.
 
 ## Automatic HTTP charging
 
-For each non-free catalog route, the interceptor:
+Before resolving billing identity, the SDK filters the matched route using each
+charge's optional `when` condition. A charge without `when` always applies.
+Conditions inspect own properties of the parsed request body using an exact,
+case-sensitive comparison:
+
+```json
+{
+  "id": "blockchain-transaction",
+  "creditType": "BLOCKCHAIN_TXN_CREDIT",
+  "amount": 2000,
+  "settlementMode": "DEFERRED",
+  "autoRecover": false,
+  "when": {
+    "source": "body",
+    "path": "registerCredentialStatus",
+    "operator": "notEquals",
+    "value": false
+  }
+}
+```
+
+Supported operators are `equals`, `notEquals`, and `exists`. `equals` and
+`notEquals` require a string, number, boolean, or null `value`; `exists` must
+omit `value`. Paths are dot-separated property names. Inherited properties and
+unsafe prototype-related path segments are never read.
+
+Conditions should describe the billed execution branch, not merely the broad
+operation. For example, an SSI route that can use either delegated authz or a
+client-funded transaction should condition `BLOCKCHAIN_TXN_CREDIT` on the body
+field that selects delegated authz.
+
+Condition evaluation does not replace DTO validation. For example, the string
+`"false"` does not equal the boolean `false`. If later validation or controller
+execution fails, reservations made for matching conditions follow the normal
+rollback path. Early-boundary routes retain their resolved charge set so it is
+not evaluated differently by the interceptor.
+
+For each route with at least one applicable charge, the interceptor:
 
 1. resolves the trusted subject and per-request environment;
 2. for `prod`, reserves every catalog charge;

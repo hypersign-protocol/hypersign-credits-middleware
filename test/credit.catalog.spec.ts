@@ -107,6 +107,73 @@ describe('CreditCatalogService', () => {
       }],
     }]))).toThrow('requires DEFERRED');
   });
+
+  it('resolves conditional charges from own request-body properties', () => {
+    const catalog = new CreditCatalogService(catalogOptions([{
+      method: 'POST', path: '/issue', charges: [
+        { id: 'api', creditType: 'API', amount: 5 },
+        {
+          id: 'txn', creditType: 'TXN', amount: 2_000,
+          when: {
+            source: 'body', path: 'registerCredentialStatus',
+            operator: 'notEquals', value: false,
+          },
+        },
+      ],
+    }]));
+    const route = catalog.find('POST', '/issue')!;
+
+    expect(catalog.forRequest(route, { body: {} }).charges.map(({ id }) => id))
+      .toEqual(['api', 'txn']);
+    expect(catalog.forRequest(route, {
+      body: { registerCredentialStatus: true },
+    }).charges.map(({ id }) => id)).toEqual(['api', 'txn']);
+    expect(catalog.forRequest(route, {
+      body: { registerCredentialStatus: false },
+    }).charges.map(({ id }) => id)).toEqual(['api']);
+    expect(catalog.forRequest(route, {
+      body: { registerCredentialStatus: 'false' },
+    }).charges.map(({ id }) => id)).toEqual(['api', 'txn']);
+    expect(route.charges).toHaveLength(2);
+  });
+
+  it('supports nested exists conditions without reading inherited properties', () => {
+    const catalog = new CreditCatalogService(catalogOptions([{
+      method: 'PATCH', path: '/did', charges: [{
+        id: 'txn', creditType: 'TXN', amount: 1_000,
+        when: { source: 'body', path: 'didDocument.id', operator: 'exists' },
+      }],
+    }]));
+    const route = catalog.find('PATCH', '/did')!;
+
+    expect(catalog.forRequest(route, {
+      body: { didDocument: { id: 'did:hid:123' } },
+    }).charges).toHaveLength(1);
+    expect(catalog.forRequest(route, {
+      body: { didDocument: Object.create({ id: 'did:hid:inherited' }) },
+    }).charges).toHaveLength(0);
+  });
+
+  it('rejects malformed or unsafe charge conditions at startup', () => {
+    const conditionCatalog = (when: unknown) => catalogOptions([{
+      method: 'POST', path: '/pay', charges: [{
+        id: 'api', creditType: 'API', amount: 1, when,
+      }],
+    }]);
+
+    expect(() => new CreditCatalogService(conditionCatalog({
+      source: 'query', path: 'paid', operator: 'equals', value: true,
+    }) as any)).toThrow('.source must be body');
+    expect(() => new CreditCatalogService(conditionCatalog({
+      source: 'body', path: '__proto__.paid', operator: 'exists',
+    }) as any)).toThrow('safe dot-separated property path');
+    expect(() => new CreditCatalogService(conditionCatalog({
+      source: 'body', path: 'paid', operator: 'equals',
+    }) as any)).toThrow('.value must be');
+    expect(() => new CreditCatalogService(conditionCatalog({
+      source: 'body', path: 'paid', operator: 'exists', value: true,
+    }) as any)).toThrow('.value must be omitted');
+  });
 });
 
 @Controller('items')

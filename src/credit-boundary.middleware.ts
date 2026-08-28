@@ -47,10 +47,11 @@ export class CreditBoundaryMiddleware implements NestMiddleware {
     response: BoundaryResponse,
     next: () => void,
   ): Promise<void> {
-    const route = this.catalog.find(
+    const catalogRoute = this.catalog.find(
       request.method,
       request.originalUrl ?? request.url ?? '',
     );
+    const route = catalogRoute && this.catalog.forRequest(catalogRoute, request);
     if (!route || !route.boundary || route.charges.length === 0) return next();
 
     const actions = await this.executor.apply(

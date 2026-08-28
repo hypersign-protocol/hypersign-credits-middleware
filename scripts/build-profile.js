@@ -115,9 +115,40 @@ function validateCatalog(catalog, expectedServiceType, file) {
       if (charge.autoRecover === false && charge.settlementMode !== 'DEFERRED') {
         throw new Error(`${key} autoRecover=false requires DEFERRED settlement`);
       }
+      if (charge.when !== undefined) validateCondition(charge.when, `${key} ${charge.id}`);
     }
   }
   return catalog;
+}
+
+function validateCondition(condition, field) {
+  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
+    throw new Error(`${field} has an invalid when condition`);
+  }
+  if (condition.source !== 'body') {
+    throw new Error(`${field} when.source must be body`);
+  }
+  const path = typeof condition.path === 'string' ? condition.path.trim() : '';
+  const safeSegments = path.split('.').every((segment) =>
+    /^[A-Za-z0-9_-]+$/.test(segment) &&
+    !['__proto__', 'prototype', 'constructor'].includes(segment));
+  if (!path || !safeSegments) {
+    throw new Error(`${field} has an invalid when.path`);
+  }
+  if (!['equals', 'notEquals', 'exists'].includes(condition.operator)) {
+    throw new Error(`${field} has an invalid when.operator`);
+  }
+  const hasValue = Object.prototype.hasOwnProperty.call(condition, 'value');
+  if (condition.operator === 'exists') {
+    if (hasValue) throw new Error(`${field} exists condition must omit value`);
+    return;
+  }
+  const valueType = typeof condition.value;
+  if (!hasValue || (condition.value !== null &&
+      !['string', 'number', 'boolean'].includes(valueType)) ||
+      (valueType === 'number' && !Number.isFinite(condition.value))) {
+    throw new Error(`${field} has an invalid when.value`);
+  }
 }
 
 function verifyArtifact(artifactPath, serviceType) {
