@@ -25,6 +25,7 @@ import {
   RECOVER_SCRIPT,
   REMOVE_EXPIRATION_SCRIPT,
   RENEW_SCRIPT,
+  REVOKE_PLAN_SCRIPT,
   RESERVE_SCRIPT,
   ROLLBACK_SCRIPT,
 } from '../src/credit.scripts';
@@ -72,6 +73,7 @@ class PlanRedis {
     }
     if (script === REMOVE_EXPIRATION_SCRIPT) return this.zset(keys[0]).delete(argv[0]) ? 1 : 0;
     if (script === EXPIRE_PLAN_SCRIPT) return this.expirePlan(keys, argv);
+    if (script === REVOKE_PLAN_SCRIPT) return this.revokePlan(keys, argv);
     if (script === CLEANUP_TERMINAL_PLANS_SCRIPT) return this.cleanup(keys, argv);
     if (script === GET_RESERVATION_SCRIPT) {
       return [...(this.hashes.get(keys[0]) ?? new Map())].flat();
@@ -369,7 +371,9 @@ class PlanRedis {
       }
       wallet -= current;
       this.hash(keys[4]).set(planId, '0');
-      this.hash(keys[6]).set(planId, CreditPlanStatus.EXPIRED);
+      if (status !== CreditPlanStatus.REVOKED) {
+        this.hash(keys[6]).set(planId, CreditPlanStatus.EXPIRED);
+      }
       this.zset(keys[7]).delete(planId);
       if (this.hash(keys[14]).get(planId) === '1') {
         this.zset(keys[12]).set(planId, Number(argv[1]));
@@ -428,6 +432,34 @@ class PlanRedis {
       type: CreditEventType.PLAN_EXPIRED,
       planId: argv[1],
       expiredAmount: unused,
+    });
+    return [1, unused, balance];
+  }
+
+  private revokePlan(keys: string[], argv: string[]) {
+    const status = this.hash(keys[3]).get(argv[1]);
+    const currentBalance = this.strings.get(keys[0]) ?? 0;
+    if (!status) return [-1, 0, currentBalance];
+    if (status === CreditPlanStatus.REVOKED) return [0, 0, currentBalance];
+    if (status === CreditPlanStatus.EXPIRED) return [-2, 0, currentBalance];
+    const unused = Number(this.hash(keys[2]).get(argv[1]) ?? 0);
+    if (currentBalance < unused) return [-3, 0, currentBalance];
+    const balance = currentBalance - unused;
+    this.strings.set(keys[0], balance);
+    this.hash(keys[2]).set(argv[1], '0');
+    this.hash(keys[3]).set(argv[1], CreditPlanStatus.REVOKED);
+    this.zset(keys[1]).delete(argv[1]);
+    const member = this.hash(keys[5]).get(argv[1]);
+    if (member) this.zset(keys[4]).delete(member);
+    if (this.hash(keys[8]).get(argv[1]) === '1') {
+      this.zset(keys[7]).set(argv[1], Number(argv[0]));
+    }
+    this.events.push({
+      type: CreditEventType.PLAN_REVOKED,
+      planId: argv[1],
+      revokedAmount: unused,
+      reason: argv[8],
+      balanceAfter: balance,
     });
     return [1, unused, balance];
   }
@@ -677,6 +709,81 @@ describe('CreditService FIFO recharge plans', () => {
       planId: 'short-plan', expiredAmount: 20, balanceAfter: 0,
     })]);
     expect(await service.recoverExpiredPlans(clock + 101)).toHaveLength(0);
+  });
+
+  it('atomically revokes a plan and emits the lifecycle event only once', async () => {
+    await grant('plan-1', 100, clock - 100, clock + 100_000);
+
+    await expect(service.revokePlan({
+      subject,
+      planId: 'plan-1',
+      reason: 'support_request',
+    })).resolves.toMatchObject({
+      planId: 'plan-1', revokedAmount: 100, balance: 0, existing: false,
+    });
+    await expect(service.revokePlan({
+      subject,
+      planId: 'plan-1',
+      reason: 'support_request',
+    })).resolves.toMatchObject({
+      planId: 'plan-1', revokedAmount: 0, balance: 0, existing: true,
+    });
+
+    expect(await service.getBalance(subject)).toBe(0);
+    expect(await service.getPlans(subject)).toEqual([
+      expect.objectContaining({
+        planId: 'plan-1', availableAmount: 0, status: CreditPlanStatus.REVOKED,
+      }),
+    ]);
+    expect(redis.events.filter((event) =>
+      event.type === CreditEventType.PLAN_REVOKED)).toEqual([
+      expect.objectContaining({
+        planId: 'plan-1', revokedAmount: 100, reason: 'support_request',
+        balanceAfter: 0,
+      }),
+    ]);
+  });
+
+  it('does not resurrect revoked credit when an in-flight reservation rolls back', async () => {
+    await grant('plan-1', 100, clock - 100, clock + 100_000);
+    const reservation = await service.reserve({ subject, amount: 40 });
+
+    await expect(service.revokePlan({ subject, planId: 'plan-1' }))
+      .resolves.toMatchObject({ revokedAmount: 60, balance: 0 });
+    expect(await service.rollback(reservation.reservationId, 'operation_failed')).toBe(true);
+
+    expect(await service.getBalance(subject)).toBe(0);
+    expect(await service.getPlans(subject)).toEqual([
+      expect.objectContaining({
+        planId: 'plan-1', availableAmount: 0, status: CreditPlanStatus.REVOKED,
+      }),
+    ]);
+    expect(redis.events).toContainEqual(expect.objectContaining({
+      type: CreditEventType.ROLLED_BACK,
+      planId: 'plan-1', restoredAmount: 0, expiredAmount: 40,
+    }));
+  });
+
+  it('allows an in-flight reservation to commit after its plan is revoked', async () => {
+    await grant('plan-1', 100, clock - 100, clock + 100_000);
+    const reservation = await service.reserve({ subject, amount: 40 });
+    await service.revokePlan({ subject, planId: 'plan-1' });
+
+    expect(await service.commit(reservation.reservationId)).toBe(true);
+    expect(redis.events).toContainEqual(expect.objectContaining({
+      type: CreditEventType.COMMITTED,
+      reservationId: reservation.reservationId,
+      planId: 'plan-1', amount: 40,
+    }));
+  });
+
+  it('rejects revocation for a missing or already-expired plan', async () => {
+    await expect(service.revokePlan({ subject, planId: 'missing-plan' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+    await grant('short-plan', 20, clock - 100, clock + 100);
+    await service.recoverExpiredPlans(clock + 101);
+    await expect(service.revokePlan({ subject, planId: 'short-plan' }))
+      .rejects.toThrow('Expired credit plan cannot be revoked');
   });
 
   it('expires stale availability before a later grant calculates balanceAfter', async () => {

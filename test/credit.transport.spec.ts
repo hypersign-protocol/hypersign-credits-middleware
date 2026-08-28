@@ -136,6 +136,36 @@ describe('CreditEventRelay', () => {
     );
   });
 
+  it('relays plan revocation with a numeric revoked amount', async () => {
+    const { provider, infrastructure, options } = createTransport();
+    provider.add.mockResolvedValue({});
+    const relay = new CreditEventRelay(
+      options, new CreditCatalogService(options), infrastructure as any,
+    );
+
+    await (relay as any).publishEntries([[
+      '2001-0',
+      ['event', CreditEventType.PLAN_REVOKED,
+        'timestamp', '2001', 'serviceType', 'kyc',
+        'scopeId', 'scope-a1', 'appId', 'a1', 'creditType', 'API',
+        'planId', 'plan-1', 'revokedAmount', '25', 'balanceAfter', '75',
+        'planBalanceAfter', '0', 'reason', 'support_request'],
+    ]]);
+
+    expect(provider.add).toHaveBeenCalledWith(
+      'credit.lifecycle',
+      CreditEventName.PLAN_REVOKED,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          type: CreditEventType.PLAN_REVOKED,
+          planId: 'plan-1', revokedAmount: 25,
+          balanceAfter: 75, planBalanceAfter: 0,
+        }),
+      }),
+      { jobId: 'kyc-2001-0' },
+    );
+  });
+
   it('recreates a consumer group lost during a Redis restart', async () => {
     const { streamClient, infrastructure, options } = createTransport();
     const relay = new CreditEventRelay(
@@ -219,6 +249,45 @@ describe('CreditCommandWorker', () => {
       expiresAt: 2_000,
       referenceId: 'payment-1',
       reason: undefined,
+    });
+    expect(provider.add).not.toHaveBeenCalled();
+  });
+
+  it('executes a trusted plan revoke command', async () => {
+    const { provider, infrastructure, options } = createTransport();
+    const credits = {
+      revokePlan: jest.fn().mockResolvedValue({
+        planId: 'plan-1', revokedAmount: 25, balance: 75, existing: false,
+      }),
+    };
+    const worker = new CreditCommandWorker(
+      options,
+      new CreditCatalogService(options),
+      credits as any,
+      infrastructure as any,
+    );
+
+    await expect((worker as any).process({
+      id: 'revoke-1',
+      name: CreditEventName.PLAN_REVOKE_REQUESTED,
+      data: {
+        commandId: 'revoke-1', schemaVersion: 3, serviceType: 'kyc',
+        payload: {
+          subject: { appId: 'account-1', creditType: 'API' },
+          planId: 'plan-1', reason: 'support_request',
+        },
+      },
+    })).resolves.toEqual({
+      planId: 'plan-1', revokedAmount: 25, balance: 75, existing: false,
+    });
+
+    expect(credits.revokePlan).toHaveBeenCalledWith({
+      subject: {
+        appId: 'account-1', creditType: 'API',
+        tenantId: undefined, appType: undefined,
+      },
+      planId: 'plan-1',
+      reason: 'support_request',
     });
     expect(provider.add).not.toHaveBeenCalled();
   });

@@ -131,6 +131,28 @@ async function main() {
     assert.equal(await credits.rollback(expiryReservation.reservationId), true);
     assert.equal(await credits.getBalance(expirySubject), 0);
 
+    const revokeSubject = { appId: 'app-revoke', creditType: 'API_CREDIT' };
+    await credits.grant({
+      subject: revokeSubject, planId: 'revoked-plan', amount: 20,
+      grantedAt: now - 100, expiresAt: now + 120_000,
+      referenceId: 'payment-revoked', criticalBalance: 0,
+    });
+    const revokedReservation = await credits.reserve({
+      subject: revokeSubject, amount: 5, requestId: 'request-revoked',
+    });
+    const revoked = await credits.revokePlan({
+      subject: revokeSubject, planId: 'revoked-plan', reason: 'integration-test',
+    });
+    assert.equal(revoked.revokedAmount, 15);
+    assert.equal(revoked.balance, 0);
+    assert.equal(revoked.existing, false);
+    assert.equal((await credits.revokePlan({
+      subject: revokeSubject, planId: 'revoked-plan', reason: 'integration-test',
+    })).existing, true);
+    assert.equal(await credits.rollback(revokedReservation.reservationId), true);
+    assert.equal(await credits.getBalance(revokeSubject), 0);
+    assert.equal((await credits.getPlans(revokeSubject))[0].status, 'REVOKED');
+
     const cleanupCredits = new CreditService(redis, {
       ...options,
       terminalPlanRetentionCount: 2,

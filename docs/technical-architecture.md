@@ -638,6 +638,7 @@ configuration problem.
 | --- | --- | --- | --- |
 | `CREDIT_GRANTED` | `credit.granted` | New grant Lua transaction | Once per new plan |
 | `PLAN_EXPIRED` | `credit.plan-expired` | Lazy expiry or recovery | Once per applied plan-expiry transition |
+| `PLAN_REVOKED` | `credit.plan-revoked` | Explicit revoke command | Once per applied plan-revocation transition |
 | `RESERVED` | `credit.reserved` | Reserve Lua transaction | Once per plan allocation |
 | `CREDIT_OBSERVED` | `credit.observed` | `dev` observation Lua transaction | Once per new catalog charge request ID |
 | `CRITICAL_BALANCE` | `credit.critical-balance` | Commit with a plan at/below its threshold | Once per qualifying committed plan allocation |
@@ -700,6 +701,19 @@ expiredAmount, expiresAt, planBalanceAfter=0, balanceAfter
 
 Meaning: unused availability was removed. `expiredAmount` does not include
 credit already reserved from the plan.
+
+### `PLAN_REVOKED`
+
+Key fields:
+
+```text
+type, timestamp, subject, scopeId, planId,
+revokedAmount, reason, planBalanceAfter=0, balanceAfter
+```
+
+Meaning: an explicit administrative command permanently removed the plan's
+unreserved credit. Reservations created before revocation remain settleable.
+A rollback does not restore their allocation into the revoked plan.
 
 ### `RESERVED`
 
@@ -793,6 +807,7 @@ reservation expiry/version and expiry-index score.
 | `credit.reserve.requested` | `CreditCommandWorker` | `CreditService.reserve()` | Command reservations are always `DEFERRED` |
 | `credit.commit.requested` | `CreditCommandWorker` | `CreditService.commit()` | Returns settlement outcome |
 | `credit.rollback.requested` | `CreditCommandWorker` | `CreditService.rollback()` | Default reason is `external_command` |
+| `credit.plan-revoke.requested` | `CreditCommandWorker` | `CreditService.revokePlan()` | Exact retry is idempotent; existing reservations remain settleable |
 
 Every command requires `schemaVersion: 3`, the configured service type, a
 non-empty command ID (or BullMQ job ID fallback), and an object payload.

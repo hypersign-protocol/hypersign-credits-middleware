@@ -240,7 +240,9 @@ for _, allocation in ipairs(allocations) do
       table.insert(expiredPlans, {planId = planId, expiredAmount = current,
         expiresAt = planExpiresAt})
     end
-    redis.call('HSET', KEYS[7], planId, '${CreditPlanStatus.EXPIRED}')
+    if planStatus ~= '${CreditPlanStatus.REVOKED}' then
+      redis.call('HSET', KEYS[7], planId, '${CreditPlanStatus.EXPIRED}')
+    end
     redis.call('ZREM', KEYS[8], planId)
     local expirationMember = redis.call('HGET', KEYS[11], planId)
     if expirationMember then redis.call('ZREM', KEYS[10], expirationMember) end
@@ -428,6 +430,34 @@ redis.call('XADD', KEYS[8], 'MAXLEN', '~', ARGV[10], '*',
   'scopeId', ARGV[5], 'appId', ARGV[6], 'tenantId', ARGV[7],
   'appType', ARGV[8], 'creditType', ARGV[9], 'planId', ARGV[2],
   'expiredAmount', unused, 'expiresAt', planExpiresAt,
+  'planBalanceAfter', 0, 'balanceAfter', balance)
+return {1, unused, balance}
+`;
+
+export const REVOKE_PLAN_SCRIPT = `
+local status = redis.call('HGET', KEYS[4], ARGV[2])
+local balance = tonumber(redis.call('GET', KEYS[1]) or '0')
+if not status then return {-1, 0, balance} end
+if status == '${CreditPlanStatus.REVOKED}' then return {0, 0, balance} end
+if status == '${CreditPlanStatus.EXPIRED}' then return {-2, 0, balance} end
+local unused = tonumber(redis.call('HGET', KEYS[3], ARGV[2]) or '0')
+if balance < unused then return {-3, 0, balance} end
+balance = balance - unused
+redis.call('SET', KEYS[1], balance)
+redis.call('HSET', KEYS[3], ARGV[2], 0)
+redis.call('HSET', KEYS[4], ARGV[2], '${CreditPlanStatus.REVOKED}')
+redis.call('ZREM', KEYS[2], ARGV[2])
+local expirationMember = redis.call('HGET', KEYS[6], ARGV[2])
+if expirationMember then redis.call('ZREM', KEYS[5], expirationMember) end
+if redis.call('HGET', KEYS[9], ARGV[2]) == '1' then
+  redis.call('ZADD', KEYS[8], tonumber(ARGV[1]), ARGV[2])
+end
+redis.call('XADD', KEYS[7], 'MAXLEN', '~', ARGV[10], '*',
+  'event', '${CreditEventType.PLAN_REVOKED}', 'timestamp', ARGV[1],
+  'serviceType', ARGV[3], 'catalogVersion', ARGV[11],
+  'scopeId', ARGV[4], 'appId', ARGV[5], 'tenantId', ARGV[6],
+  'appType', ARGV[7], 'creditType', ARGV[8], 'planId', ARGV[2],
+  'revokedAmount', unused, 'reason', ARGV[9],
   'planBalanceAfter', 0, 'balanceAfter', balance)
 return {1, unused, balance}
 `;

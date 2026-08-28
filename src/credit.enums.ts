@@ -86,6 +86,7 @@ export enum CreditEventType {
   ROLLED_BACK = 'ROLLED_BACK',
   EXPIRED = 'EXPIRED',
   PLAN_EXPIRED = 'PLAN_EXPIRED',
+  PLAN_REVOKED = 'PLAN_REVOKED',
   CREDIT_GRANTED = 'CREDIT_GRANTED',
   CREDIT_OBSERVED = 'CREDIT_OBSERVED',
   CRITICAL_BALANCE = 'CRITICAL_BALANCE',
@@ -98,6 +99,7 @@ export enum CreditEventName {
   ROLLED_BACK = 'credit.rolled-back',
   EXPIRED = 'credit.expired',
   PLAN_EXPIRED = 'credit.plan-expired',
+  PLAN_REVOKED = 'credit.plan-revoked',
   CREDIT_GRANTED = 'credit.granted',
   CRITICAL_BALANCE = 'credit.critical-balance',
   CREDIT_OBSERVED = 'credit.observed',
@@ -106,6 +108,7 @@ export enum CreditEventName {
   RESERVE_REQUESTED = 'credit.reserve.requested',
   COMMIT_REQUESTED = 'credit.commit.requested',
   ROLLBACK_REQUESTED = 'credit.rollback.requested',
+  PLAN_REVOKE_REQUESTED = 'credit.plan-revoke.requested',
 }
 
 /** Settlement actions accepted by trusted command messages. */

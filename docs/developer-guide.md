@@ -891,6 +891,7 @@ interface CreditLifecycleEventEnvelope {
 | --- | --- | --- |
 | `credit.granted` | `CREDIT_GRANTED` | A recharge plan was created. |
 | `credit.plan-expired` | `PLAN_EXPIRED` | Unused plan credit expired. |
+| `credit.plan-revoked` | `PLAN_REVOKED` | An explicit command revoked unused plan credit. |
 | `credit.reserved` | `RESERVED` | Credit was allocated from one plan. |
 | `credit.committed` | `COMMITTED` | One plan allocation was finalized. |
 | `credit.rolled-back` | `ROLLED_BACK` | One allocation was processed as a rollback. |
@@ -978,6 +979,42 @@ await provider.add(
 
 If `referenceId` is absent, the command worker uses `commandId`.
 
+### Revoke-plan command
+
+Job name: `credit.plan-revoke.requested`
+
+```ts
+await provider.add(
+  `credit.commands.${CreditServiceType.SSI_API}`,
+  CreditEventName.PLAN_REVOKE_REQUESTED,
+  {
+    schemaVersion: 3,
+    commandId: `${supportRequest.id}:${CreditType.BLOCKCHAIN_TXN_CREDIT}`,
+    serviceType: CreditServiceType.SSI_API,
+    source: 'developer-dashboard',
+    payload: {
+      subject: {
+        tenantId,
+        appType: CreditAppType.SSI_API,
+        appId,
+        creditType: CreditType.BLOCKCHAIN_TXN_CREDIT,
+      },
+      planId: `${planId}.${CreditType.BLOCKCHAIN_TXN_CREDIT}`,
+      reason: supportRequest.reason,
+    },
+  },
+  { jobId: `${supportRequest.id}:${CreditType.BLOCKCHAIN_TXN_CREDIT}` },
+);
+```
+
+Send one command with a distinct `commandId`/`jobId` for each SDK plan
+allocation that must be revoked. For SSI a
+database plan can have separate `.API_CREDIT` and `.BLOCKCHAIN_TXN_CREDIT`
+allocations. The SDK emits `credit.plan-revoked` only when it applies the state
+transition; an exact retry returns `existing: true` without another event.
+Credit already reserved before revocation can still commit. Rollback or lease
+recovery finalizes that reservation without restoring revoked credit.
+
 ### Reserve command
 
 Job name: `credit.reserve.requested`
@@ -1046,6 +1083,7 @@ throw, allowing the SDK's BullMQ retry policy to run.
 | `getReservation(id)` | Returns retained reservation state or `null`. |
 | `recoverExpired(now?)` | Recovers due auto-recoverable reservations. |
 | `recoverExpiredPlans(now?)` | Expires due unused plan balances. |
+| `revokePlan(input)` | Permanently removes one plan's unused credit and emits `PLAN_REVOKED`. |
 
 ### `GrantCreditsInput`
 

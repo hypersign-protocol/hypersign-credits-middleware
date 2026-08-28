@@ -22,6 +22,7 @@ import {
   RECOVER_SCRIPT,
   REMOVE_EXPIRATION_SCRIPT,
   RENEW_SCRIPT,
+  REVOKE_PLAN_SCRIPT,
   RESERVE_SCRIPT,
   ROLLBACK_SCRIPT,
 } from './credit.scripts';
@@ -48,6 +49,8 @@ import {
   ReserveCreditInput,
   ReserveCreditResult,
   ResolvedCreditOptions,
+  RevokeCreditPlanInput,
+  RevokeCreditPlanResult,
 } from './credit.types';
 
 export class InsufficientCreditsException extends HttpException {
@@ -319,6 +322,61 @@ export class CreditService {
     };
   }
 
+  /** Atomically removes unused credit and permanently revokes one plan. */
+  async revokePlan(input: RevokeCreditPlanInput): Promise<RevokeCreditPlanResult> {
+    const subject = this.keys.subject(input.subject);
+    const planId = identifier(input.planId, 'planId');
+    const scopeId = this.keys.scopeId(subject);
+    const result = await this.redis.eval(
+      REVOKE_PLAN_SCRIPT,
+      9,
+      this.keys.balance(subject),
+      this.keys.planOrder(subject),
+      this.keys.planRemaining(subject),
+      this.keys.planStatuses(subject),
+      this.keys.planExpirations(),
+      this.keys.planExpirationMembers(subject),
+      this.keys.eventStream(),
+      this.keys.terminalPlans(subject),
+      this.keys.trackedPlans(subject),
+      Date.now(),
+      planId,
+      this.options.catalog.serviceType,
+      scopeId,
+      subject.appId,
+      subject.tenantId ?? '',
+      subject.appType ?? '',
+      subject.creditType ?? '',
+      boundedText(input.reason ?? '', 'reason', 2_048),
+      this.options.eventStreamMaxLength,
+      this.options.catalog.version,
+    ) as Array<string | number>;
+    if (!Array.isArray(result) || result.length !== 3) {
+      throw new Error(`Unexpected Redis revoke result: ${String(result)}`);
+    }
+    const outcome = Number(result[0]);
+    if (outcome === -1) {
+      throw new BadRequestException('Credit plan does not exist in this wallet');
+    }
+    if (outcome === -2) {
+      throw new BadRequestException('Expired credit plan cannot be revoked');
+    }
+    if (outcome === -3) {
+      throw new Error('Plan remaining credit exceeds the wallet balance');
+    }
+    if (outcome !== 0 && outcome !== 1) {
+      throw new Error(`Unexpected Redis revoke outcome: ${String(result[0])}`);
+    }
+    if (outcome === 1) await this.cleanupTerminalPlans(subject);
+    return {
+      planId,
+      revokedAmount: safeNonNegative(result[1], 'revokedAmount'),
+      balance: safeNonNegative(result[2], 'balance'),
+      existing: outcome === 0,
+      subject,
+    };
+  }
+
   async commit(reservationId: string): Promise<boolean> {
     const reservation = await this.getReservation(reservationId);
     if (!reservation) return false;
@@ -536,9 +594,10 @@ export class CreditService {
     const now = Date.now();
     return parsed.map((plan) => {
       const expiresAt = safePositive(plan.expiresAt, 'plan.expiresAt');
-      const status = expiresAt <= now
+      const storedStatus = planStatus(plan.status);
+      const status = expiresAt <= now && storedStatus !== CreditPlanStatus.REVOKED
         ? CreditPlanStatus.EXPIRED
-        : planStatus(plan.status);
+        : storedStatus;
       return {
         planId: identifier(plan.planId, 'plan.planId'),
         subject,
@@ -778,6 +837,7 @@ export {
   RECOVER_SCRIPT,
   REMOVE_EXPIRATION_SCRIPT,
   RENEW_SCRIPT,
+  REVOKE_PLAN_SCRIPT,
   RESERVE_SCRIPT,
   ROLLBACK_SCRIPT,
 };

@@ -71,6 +71,7 @@ compete for jobs.
 | `credit.reserve.requested` | Create a trusted deferred reservation. |
 | `credit.commit.requested` | Commit a deferred reservation. |
 | `credit.rollback.requested` | Roll back a deferred reservation. |
+| `credit.plan-revoke.requested` | Permanently revoke an existing plan's unused credit. |
 
 The standard HTTP integration only needs `credit.grant.requested`. The other
 commands are for trusted asynchronous workflows.
@@ -85,6 +86,7 @@ commands are for trusted asynchronous workflows.
 | `credit.rolled-back` | Reserved credit was returned after a failed request. |
 | `credit.expired` | An abandoned reservation lease expired. |
 | `credit.plan-expired` | Unused plan credit expired. |
+| `credit.plan-revoked` | An explicit command revoked unused plan credit. |
 | `credit.critical-balance` | A plan reached its configured critical threshold. |
 | `credit.observed` | A `dev` request was recorded with zero deduction. |
 | `credit.command-rejected` | A trusted command failed validation or execution. |

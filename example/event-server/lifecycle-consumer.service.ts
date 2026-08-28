@@ -49,6 +49,9 @@ implements OnApplicationBootstrap, OnApplicationShutdown {
         case CreditEventName.PLAN_EXPIRED:
           this.logger.log(`Recharge plan expired: ${JSON.stringify(job.data)}`);
           break;
+        case CreditEventName.PLAN_REVOKED:
+          this.logger.log(`Recharge plan revoked: ${JSON.stringify(job.data)}`);
+          break;
         case CreditEventName.CREDIT_GRANTED:
           this.logger.log(`Credit granted: ${JSON.stringify(job.data)}`);
           break;
@@ -114,6 +117,7 @@ const EVENT_TYPES: Record<string, AnyCreditEvent['type']> = {
   [CreditEventName.ROLLED_BACK]: CreditEventType.ROLLED_BACK,
   [CreditEventName.EXPIRED]: CreditEventType.EXPIRED,
   [CreditEventName.PLAN_EXPIRED]: CreditEventType.PLAN_EXPIRED,
+  [CreditEventName.PLAN_REVOKED]: CreditEventType.PLAN_REVOKED,
   [CreditEventName.CREDIT_GRANTED]: CreditEventType.CREDIT_GRANTED,
   [CreditEventName.CRITICAL_BALANCE]: CreditEventType.CRITICAL_BALANCE,
   [CreditEventName.CREDIT_OBSERVED]: CreditEventType.CREDIT_OBSERVED,

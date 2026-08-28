@@ -187,6 +187,11 @@ lifecycle consumers must enforce a durable unique constraint on `eventId`.
 Workers on the same queue compete. Use separate lifecycle queue names when
 multiple systems each need every event.
 
+Trusted producers can revoke an existing plan with
+`credit.plan-revoke.requested`. The atomic transition emits
+`credit.plan-revoked`; reservations created before revocation remain
+settleable and cannot restore revoked credit.
+
 ## Recovery
 
 Run recovery every five minutes:

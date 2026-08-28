@@ -87,6 +87,10 @@ export type GrantCreditCommandEnvelope = CreditCommandEnvelope<
   GrantCreditsInput & Record<string, unknown>
 >;
 
+export type RevokeCreditPlanCommandEnvelope = CreditCommandEnvelope<
+  RevokeCreditPlanInput & Record<string, unknown>
+>;
+
 export interface CreditTransportOptions {
   /** BullMQ Redis key prefix. Default: "bull". */
   prefix?: string;
@@ -235,6 +239,21 @@ export interface GrantCreditsResult {
   balance: number;
   expiresAt: number;
   criticalBalance: number;
+  existing: boolean;
+  subject: CreditSubject;
+}
+
+/** Trusted administrative request that permanently disables one plan. */
+export interface RevokeCreditPlanInput {
+  subject: CreditSubject;
+  planId: string;
+  reason?: string;
+}
+
+export interface RevokeCreditPlanResult {
+  planId: string;
+  revokedAmount: number;
+  balance: number;
   existing: boolean;
   subject: CreditSubject;
 }

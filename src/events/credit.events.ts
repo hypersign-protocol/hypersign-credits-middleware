@@ -141,6 +141,17 @@ export interface CreditPlanExpiredEvent extends BaseCreditEvent {
   planBalanceAfter: 0;
 }
 
+/** Emitted after an explicit command permanently revokes a credit plan. */
+export interface CreditPlanRevokedEvent extends BaseCreditEvent {
+  type: CreditEventType.PLAN_REVOKED;
+  planId: string;
+  /** Unreserved credit removed by the revocation. */
+  revokedAmount: number;
+  reason?: string;
+  balanceAfter: number;
+  planBalanceAfter: 0;
+}
+
 /**
  * Emitted after committed consumption leaves a plan at or below its immutable
  * `criticalBalance` threshold. Use this
@@ -177,6 +188,7 @@ export type AnyCreditEvent =
   | CreditRolledBackEvent
   | CreditExpiredEvent
   | CreditPlanExpiredEvent
+  | CreditPlanRevokedEvent
   | CreditGrantedEvent
   | CreditObservedEvent
   | CreditCriticalBalanceEvent;

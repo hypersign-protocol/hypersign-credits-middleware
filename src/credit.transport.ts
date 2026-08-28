@@ -40,6 +40,7 @@ const JOB_NAMES: Record<CreditEventType, CreditEventName> = {
   [CreditEventType.ROLLED_BACK]: CreditEventName.ROLLED_BACK,
   [CreditEventType.EXPIRED]: CreditEventName.EXPIRED,
   [CreditEventType.PLAN_EXPIRED]: CreditEventName.PLAN_EXPIRED,
+  [CreditEventType.PLAN_REVOKED]: CreditEventName.PLAN_REVOKED,
   [CreditEventType.CREDIT_GRANTED]: CreditEventName.CREDIT_GRANTED,
   [CreditEventType.CREDIT_OBSERVED]: CreditEventName.CREDIT_OBSERVED,
   [CreditEventType.CRITICAL_BALANCE]: CreditEventName.CRITICAL_BALANCE,
@@ -293,6 +294,12 @@ export class CreditCommandWorker implements OnApplicationBootstrap, OnApplicatio
             CreditSettlementAction.ROLLBACK,
             optionalString(command.payload.reason) ?? 'external_command',
           );
+        case CreditEventName.PLAN_REVOKE_REQUESTED:
+          return this.credits.revokePlan({
+            subject: this.subject(command.payload.subject),
+            planId: requiredString(command.payload.planId, 'payload.planId'),
+            reason: optionalString(command.payload.reason),
+          });
         default:
           throw new TypeError(`Unsupported credit command ${job.name}`);
       }
@@ -392,7 +399,7 @@ function normalizeEvent(fields: Record<string, string>): Record<string, unknown>
     'timestamp', 'amount', 'totalAmount', 'balanceAfter', 'planBalanceAfter',
     'threshold', 'expiresAt', 'grantedAt', 'expiredAmount',
     'restoredAmount', 'allocationIndex', 'allocationCount', 'criticalBalance',
-    'requestedAmount', 'deductedAmount',
+    'requestedAmount', 'deductedAmount', 'revokedAmount',
   ]);
   const result: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(fields)) {

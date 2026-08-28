@@ -261,7 +261,7 @@ ACTIVE -> DEPLETED
 ACTIVE -> EXPIRED
 DEPLETED -> ACTIVE       rollback before expiry
 DEPLETED -> EXPIRED      expiry while reserved
-ACTIVE/DEPLETED -> REVOKED (reserved for an explicit future command)
+ACTIVE/DEPLETED -> REVOKED (`credit.plan-revoke.requested`)
 ```
 
 A grant creates all plan attributes, including its immutable low-balance
