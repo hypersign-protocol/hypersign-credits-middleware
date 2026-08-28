@@ -109,13 +109,7 @@
     {
       "method": "GET",
       "path": "/api/v1/did",
-      "charges": [
-        {
-          "id": "api",
-          "creditType": "API_CREDIT",
-          "amount": 1
-        }
-      ]
+      "charges": []
     },
     {
       "method": "PATCH",
@@ -222,13 +216,7 @@
     {
       "method": "GET",
       "path": "/api/v1/did/resolve/:did",
-      "charges": [
-        {
-          "id": "api",
-          "creditType": "API_CREDIT",
-          "amount": 1
-        }
-      ]
+      "charges": []
     },
     {
       "method": "POST",
