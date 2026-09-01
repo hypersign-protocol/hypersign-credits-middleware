@@ -275,7 +275,8 @@
     },
     {
       "method": "GET",
-      "path": "/api/v1/e-kyc/verification/mobile-flow/:flowId"
+      "path": "/api/v1/e-kyc/verification/mobile-flow/:flowId",
+      "charges": []
     },
     {
       "method": "PATCH",
