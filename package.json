@@ -1,6 +1,6 @@
 {
   "name": "@hypersign-protocol/credit-middleware",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Catalog-driven NestJS credit lifecycle SDK with Redis and BullMQ",
   "license": "ISC",
   "author": "",
