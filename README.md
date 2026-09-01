@@ -8,6 +8,7 @@ transactions and BullMQ lifecycle transport.
 - [Technical architecture](docs/technical-architecture.md)
 - [Redis keyspace](docs/redis-keyspace.md)
 - [Lua state transitions](docs/lua-scripts.md)
+- [Production credit debugging runbook](docs/production-credit-debugging.md)
 
 ## Build profiles
 

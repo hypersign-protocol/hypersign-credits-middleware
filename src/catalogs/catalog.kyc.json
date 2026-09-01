@@ -1,6 +1,6 @@
 {
   "serviceType": "CAVACH_API",
-  "version": "3.21.1",
+  "version": "3.23.0",
   "globalPrefix": "api",
   "versioning": "URI",
   "uriVersionPrefix": "v",
@@ -414,13 +414,28 @@
       "charges": []
     },
     {
-      "method": "PATCH",
+      "method": "POST",
       "path": "/api/v1/e-kyc/verification/widget-config",
       "charges": []
     },
     {
-      "method": "POST",
-      "path": "/api/v1/e-kyc/verification/widget-config",
+      "method": "DELETE",
+      "path": "/api/v1/e-kyc/verification/widget-config/:widgetConfigId",
+      "charges": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/e-kyc/verification/widget-config/:widgetConfigId",
+      "charges": []
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/e-kyc/verification/widget-config/:widgetConfigId",
+      "charges": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/e-kyc/verification/widget-config/all",
       "charges": []
     },
     {
