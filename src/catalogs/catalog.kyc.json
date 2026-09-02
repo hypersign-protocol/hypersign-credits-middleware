@@ -276,13 +276,7 @@
     {
       "method": "GET",
       "path": "/api/v1/e-kyc/verification/mobile-flow/:flowId",
-      "charges": [
-        {
-          "id": "api",
-          "creditType": "API_CREDIT",
-          "amount": 10
-        }
-      ]
+      "charges": []
     },
     {
       "method": "PATCH",
@@ -435,6 +429,11 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/e-kyc/verification/widget-config/all",
+      "charges": []
+    },
+    {
+      "method": "PATCH",
       "path": "/api/v1/e-kyc/verification/widget-config/all",
       "charges": []
     },
