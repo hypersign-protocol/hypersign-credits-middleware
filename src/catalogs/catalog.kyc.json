@@ -455,6 +455,28 @@
     },
     {
       "method": "POST",
+      "path": "/api/v1/pan/aadhaar/link-status",
+      "charges": [
+        {
+          "id": "api",
+          "creditType": "API_CREDIT",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pan/verify",
+      "charges": [
+        {
+          "id": "api",
+          "creditType": "API_CREDIT",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/api/v1/proof",
       "charges": []
     },
