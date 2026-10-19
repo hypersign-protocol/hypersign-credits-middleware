@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { MetadataScanner } from '@nestjs/core';
 import { CreditCatalogAuditor } from '../src/credit.catalog-auditor';
 import { CreditCatalogService } from '../src/credit.catalog';
+import { catalog } from '../src/catalogs';
 import { DEFAULT_CREDIT_OPTIONS } from '../src/credit.constants';
 import {
   CreditServiceType,
@@ -15,6 +16,11 @@ const catalogOptions = (routes: any[]) => ({
 });
 
 describe('CreditCatalogService', () => {
+  it('exports the bundled catalog JSON', () => {
+    expect(catalog.serviceType).toBe(CreditServiceType.CAVACH_API);
+    expect(catalog.routes.length).toBeGreaterThan(0);
+  });
+
   it('uses the source-test KYC catalog and ignores runtime catalog overrides', () => {
     const resolved = resolveCreditOptions({
       catalog: {

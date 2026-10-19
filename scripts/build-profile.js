@@ -48,8 +48,11 @@ function main(argv) {
   ]);
 
   const distCatalogRoot = path.join(distRoot, 'catalogs');
-  fs.rmSync(distCatalogRoot, { recursive: true, force: true });
-  fs.mkdirSync(distCatalogRoot, { recursive: true });
+  for (const entry of fs.readdirSync(distCatalogRoot)) {
+    if (entry.endsWith('.json')) {
+      fs.rmSync(path.join(distCatalogRoot, entry));
+    }
+  }
   fs.copyFileSync(catalogPath, path.join(distCatalogRoot, 'catalog.json'));
   verifyRuntimeCatalog(distRoot, catalog);
 
@@ -153,7 +156,9 @@ function validateCondition(condition, field) {
 
 function verifyArtifact(artifactPath, serviceType) {
   const listing = run('tar', ['-tzf', artifactPath]);
-  const catalogs = listing.split(/\r?\n/).filter((entry) => entry.includes('/catalogs/'));
+  const catalogs = listing.split(/\r?\n/).filter(
+    (entry) => entry.includes('/catalogs/') && entry.endsWith('.json'),
+  );
   if (catalogs.length !== 1 || catalogs[0] !== 'package/dist/catalogs/catalog.json') {
     throw new Error(`${artifactPath} must contain exactly one runtime catalog; found ${catalogs.join(', ')}`);
   }
