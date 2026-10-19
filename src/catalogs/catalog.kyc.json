@@ -497,6 +497,21 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/usage/transactions",
+      "charges": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/transactions/summary",
+      "charges": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/transactions/:id",
+      "charges": []
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/user",
       "charges": []
     },
